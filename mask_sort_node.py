@@ -26,8 +26,8 @@ class MaskSortByPosition:
                     "tooltip": "Direction to sort masks.",
                 }),
                 "add_background": ("BOOLEAN", {
-                    "default": True,
-                    "tooltip": "Add background mask as first channel (required for MultiTalk).",
+                    "default": False,
+                    "tooltip": "Add background mask as first channel. Try False first for MultiTalk.",
                 }),
             },
         }
@@ -173,12 +173,89 @@ class MaskReorder:
         return (reordered, info)
 
 
+class DtypeReset:
+    """Resets PyTorch default dtype to fp32. Use after SAM3 to fix bf16 issues."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "any_input": ("*",),  # Accept any input to control execution order
+            },
+        }
+
+    RETURN_TYPES = ("*",)
+    RETURN_NAMES = ("pass_through",)
+    FUNCTION = "reset_dtype"
+    CATEGORY = "utils"
+    
+    # This makes it work with any input type
+    INPUT_IS_LIST = False
+    OUTPUT_IS_LIST = False
+
+    def reset_dtype(self, any_input):
+        """Reset dtype and clear CUDA cache."""
+        import torch
+        import gc
+        
+        # Reset default dtype
+        torch.set_default_dtype(torch.float32)
+        
+        # Clear CUDA cache
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        
+        gc.collect()
+        
+        print("[DtypeReset] Reset to fp32, cleared CUDA cache")
+        
+        return (any_input,)
+
+
+class DtypeResetSimple:
+    """Simple dtype reset - just triggers the reset, no passthrough needed."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {},
+            "optional": {
+                "trigger": ("*",),  # Optional trigger to control execution order
+            },
+        }
+
+    RETURN_TYPES = ()
+    FUNCTION = "reset_dtype"
+    CATEGORY = "utils"
+    OUTPUT_NODE = True
+
+    def reset_dtype(self, trigger=None):
+        """Reset dtype and clear CUDA cache."""
+        import torch
+        import gc
+        
+        torch.set_default_dtype(torch.float32)
+        
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        
+        gc.collect()
+        
+        print("[DtypeReset] Reset to fp32, cleared CUDA cache")
+        
+        return {}
+
+
 # ---------------------------------------------------------------------------
 NODE_CLASS_MAPPINGS = {
     "MaskSortByPosition": MaskSortByPosition,
     "MaskReorder": MaskReorder,
+    "DtypeReset": DtypeReset,
+    "DtypeResetSimple": DtypeResetSimple,
 }
 NODE_DISPLAY_NAME_MAPPINGS = {
     "MaskSortByPosition": "Sort Masks by Position",
     "MaskReorder": "Reorder Masks (Manual)",
+    "DtypeReset": "Dtype Reset (Pass-through)",
+    "DtypeResetSimple": "Dtype Reset (Simple)",
 }
