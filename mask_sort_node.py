@@ -86,6 +86,9 @@ class MaskSortByPosition:
         sorted_indices = [c[0] for c in centroids]
         sorted_masks = masks[sorted_indices]
         
+        # Ensure fp32 dtype (SAM3 may output bf16 which causes autocast issues)
+        sorted_masks = sorted_masks.float()
+        
         # Add background mask if requested (for MultiTalk)
         # Background = inverse of all speaker masks combined
         if add_background:
